@@ -10,7 +10,7 @@ def chatbot_node(state: MessagesState):
     # can access the messages using the "messages" key.
     messages = state["messages"]
     # instead of invoking the llm with user input, we invoke it with the
-    #  messages dictionary
+    #  messages objects list
     response = llm.invoke(messages)
     return {"messages": [response]}
 
