@@ -1,24 +1,22 @@
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from langgraph.graph import MessagesState
 
 load_dotenv()
 
-chat_history = InMemoryChatMessageHistory()
 
-
-def get_session_history(session_id):
-    return chat_history
+def chatbot_node(state: MessagesState):
+    # Because MessagesState behaves like a dictionary-like state object, we
+    # can access the messages using the "messages" key.
+    messages = state["messages"]
+    # instead of invoking the llm with user input, we invoke it with the
+    #  messages dictionary
+    response = llm.invoke(messages)
+    return {"messages": [response]}
 
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 
-chatbot = RunnableWithMessageHistory(
-    llm,
-    get_session_history
-)
 
 while True:
 
