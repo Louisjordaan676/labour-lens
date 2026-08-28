@@ -25,8 +25,9 @@ embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
 # # print(len(result)) # 197 because thats how many chunks are in "chunks"
 # # print(len(result[0])) # 1536 , every string has this amount of vectors
 
-vector_store = Chroma(
+vector_store = Chroma.from_documents(
+    documents=chunks,
+    embedding=embeddings_model,
     collection_name="basic_conditions_of_employment",
-    embedding_function=embeddings_model,
     persist_directory="./chroma_langchain_dh"
 )
