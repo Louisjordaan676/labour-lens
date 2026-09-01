@@ -31,3 +31,5 @@ vector_store = Chroma.from_documents(
     collection_name="basic_conditions_of_employment",
     persist_directory="./chroma_langchain_dh"
 )
+
+retriever = vector_store.as_retriever(search_kwargs={"k": 3})
