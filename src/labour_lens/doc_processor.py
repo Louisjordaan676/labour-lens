@@ -2,10 +2,18 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_chroma import Chroma
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_retrieval_chain
+from pinecone import Pinecone
+from langchain_pinecone import PineconeVectorStore
 from langchain_core.runnables import RunnablePassthrough
-from langchain.
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+pc_index = pc.Index("labour-lens")
+print(pc_index.describe_index_stats())
 
 # create embeddings model
 embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -25,32 +33,28 @@ Context: {context}
 # create prompt template
 prompt = ChatPromptTemplate([
     ("system", system_prompt),
-    ("human", "{question}")
+    ("human", "{input}")
 ])
 
 
-if os.path.exists("./chroma_langchain_dh"):
-    vector_store = Chroma(embedding_function=embeddings_model,
-                          collection_name="basic_conditions_of_employment",
-                          persist_directory="./chroma_langchain_dh")
-else:
-    # load the document
-    loader = PyPDFLoader(
-        r"C:\Users\jorda\Projects\labour-lens\data\Basic Conditions of Employment Act [No. 75 of 1997].pdf")
-    pages = loader.load()
+# load the document
+loader = PyPDFLoader(
+    r"C:\Users\jorda\Projects\labour-lens\data\Basic Conditions of Employment Act [No. 75 of 1997].pdf")
+pages = loader.load()
 
-    # create a text recursive splitter (chunking)
-    r_text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=700, chunk_overlap=50)
-    chunks = r_text_splitter.split_documents(pages)
+# create a text recursive splitter (chunking)
+r_text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=700, chunk_overlap=50)
 
-    # Create vector store
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings_model,
-        collection_name="basic_conditions_of_employment",
-        persist_directory="./chroma_langchain_dh"
-    )
+
+chunks = r_text_splitter.split_documents(pages)
+
+vector_store = PineconeVectorStore.from_documents(
+    documents=chunks,
+    embedding=embeddings_model,
+    index_name="labour-lens"
+)
+
 
 retriever = vector_store.as_retriever(search_kwargs={"k": 3})
 
