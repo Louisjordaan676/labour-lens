@@ -1,13 +1,10 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_classic.chains import create_retrieval_chain
+from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
-from langchain_core.runnables import RunnablePassthrough
 from dotenv import load_dotenv
+
 import os
 import hashlib
 
@@ -27,141 +24,122 @@ index_name = "labour-lens"
 pc_index = pc.Index(index_name)
 
 # --------------------------------------------------
-# 3. Document we want to ingest
+# 3. Create embeddings model
 # --------------------------------------------------
-pdf_path = r"C:\Users\jorda\Projects\labour-lens\data\Basic Conditions of Employment Act [No. 75 of 1997].pdf"
-
-file_name = os.path.basename(pdf_path)
+embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # --------------------------------------------------
-# 4. Create a stable document ID
+# 4. Text splitter
 # --------------------------------------------------
 
-document_id = hashlib.sha256(
-    file_name.encode("utf-8")
-).hexdigest()
-
-# --------------------------------------------------
-# 5. Check whether this document already exists
-# --------------------------------------------------
-
-existing_vectors = pc_index.query(
-    vector=[0.0] * 1536,
-    top_k=1,
-    include_metadata=True,
-    filter={
-        "document_id": {"$eq": document_id}
-    }
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=700,
+    chunk_overlap=50
 )
 
-if existing_vectors["matches"]:
-    print("Document already exists in Pinecone.")
-    print("Skipping ingestion.")
+# --------------------------------------------------
+# 5. Find all PDF files in data folder
+# --------------------------------------------------
 
-else:
-    print("Document not found in Pinecone.")
-    print("Starting ingestion...")
+project_root = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+)
+
+data_folder = os.path.join(
+    project_root,
+    "data"
+)
+
+pdf_files = [
+    file for file in os.listdir(data_folder)
+    if file.lower().endswith(".pdf")
+]
+print(f"Found {len(pdf_files)} PDF file(s).")
+
+# --------------------------------------------------
+# 6. Process each PDF
+# --------------------------------------------------
+
+for pdf_file in pdf_files:
+    pdf_path = os.path.join(
+        data_folder,
+        pdf_file
+    )
+
+    print("\n----------------------------------------")
+    print(f"Processing: {pdf_file}")
+    print("----------------------------------------")
 
     # --------------------------------------------------
-    # 6. Load PDF
+    # 7. Create document ID
     # --------------------------------------------------
+
+    document_id = hashlib.sha256(
+        pdf_file.encode("utf-8")
+    ).hexdigest()
+
+    # --------------------------------------------------
+    # 8. Check whether document already exists
+    # --------------------------------------------------
+    first_chunk_id = f"{document_id}_chunk_0"
+    existing_vectors = pc_index.fetch(
+        ids=[first_chunk_id]
+    )
+
+    if existing_vectors.vectors:
+        print("Document already exists in Pinecone.")
+        print("Skipping ingestion.")
+
+        continue
+
+    # --------------------------------------------------
+    # 9. Load PDF
+    # --------------------------------------------------
+    print("Document is new.")
+    print("Loading PDF...")
 
     loader = PyPDFLoader(pdf_path)
+
     pages = loader.load()
 
     # --------------------------------------------------
-    # 7. Split document into chunks
+    # 10. Split document into chunks
     # --------------------------------------------------
-
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=700,
-        chunk_overlap=50
-    )
-
     chunks = text_splitter.split_documents(pages)
 
     print(f"Created {len(chunks)} chunks.")
 
     # --------------------------------------------------
-    # 8. Add metadata
+    # 11. Add metadata
     # --------------------------------------------------
 
     for chunk in chunks:
-
         chunk.metadata["document_id"] = document_id
-        chunk.metadata["source"] = file_name
+        chunk.metadata["source"] = pdf_file
 
     # --------------------------------------------------
-    # 9. Create deterministic IDs for chunks
+    # 12. Create deterministic chunk IDs
     # --------------------------------------------------
-    chunk_ids = []
 
-    for i, chunk in enumerate(chunks):
-        chunk_id = f"{document_id}_chunk_{i}"
-        chunk_ids.append(chunk_id)
-
-    # --------------------------------------------------
-    # 10. Create embeddings model
-    # --------------------------------------------------
-    embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    chunk_ids = [
+        f"{document_id}_chunk_{i}"
+        for i in range(len(chunks))
+    ]
 
     # --------------------------------------------------
-    # 11. Upload to Pinecone
+    # 13. Upload to Pinecone
     # --------------------------------------------------
-    vector_store = PineconeVectorStore.from_documents(
+
+    PineconeVectorStore.from_documents(
         documents=chunks,
         embedding=embeddings_model,
         index_name=index_name,
         ids=chunk_ids
     )
-    print("Document successfully embedded and uploaded to Pinecone.")
 
+    print("Document successfully embedded and uploaded.")
     print(f"Uploaded {len(chunks)} vectors.")
 
-
-# # create LLm
-# llm = ChatOpenAI(model="gpt-4o-mini")
-
-# system_prompt = """
-# You are a helpful labour law assistant.
-# you will recieve context and a question to help you answer the qustion.
-# Do not make anything up. if you do not know the answer,
-# reply with 'I do not know the answer to your question'.
-
-# Context: {context}
-# """
-
-# # create prompt template
-# prompt = ChatPromptTemplate([
-#     ("system", system_prompt),
-#     ("human", "{input}")
-# ])
-
-
-# # load the document
-# loader = PyPDFLoader(
-#     r"C:\Users\jorda\Projects\labour-lens\data\Basic Conditions of Employment Act [No. 75 of 1997].pdf")
-# pages = loader.load()
-
-# # create a text recursive splitter (chunking)
-# r_text_splitter = RecursiveCharacterTextSplitter(
-#     chunk_size=700, chunk_overlap=50)
-
-
-# chunks = r_text_splitter.split_documents(pages)
-
-# vector_store = PineconeVectorStore.from_documents(
-#     documents=chunks,
-#     embedding=embeddings_model,
-#     index_name="labour-lens"
-# )
-
-
-# retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-
-
-# combine_docs_chain = create_stuff_documents_chain(llm, prompt)
-# rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
-
-# response = rag_chain.invoke({"input": input("Please enter a question: ")})
-# print(response["answer"])
+print("\n========================================")
+print("Document processing complete.")
+print("========================================")
