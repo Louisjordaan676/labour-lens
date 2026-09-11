@@ -3,6 +3,7 @@ from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatMessagePromptTemplate
 import os
 
 load_dotenv()
@@ -25,6 +26,21 @@ llm = ChatOpenAI(
     temperature=0
 )
 
+# =========== Prompt template ==========
+prompt = ChatMessagePromptTemplate.from_template("""
+You are LabourLens, a South African labour-law assistant.
+
+Answer the user's question using only the provided context below. 
+Do not draw on outside knowledge. If the context does not contain 
+enough information to answer the question, respond with exactly: 
+"I do not know the answer to this question."
+
+Where your answer has significant legal consequences, remind the 
+user to consult a qualified South African labour attorney.
+
+Context: {context}
+Question: {input}
+""")
 # =========== Create vector store ==========
 vector_store = PineconeVectorStore(
     index_name=index_name,
