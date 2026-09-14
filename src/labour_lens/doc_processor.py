@@ -30,7 +30,7 @@ def process_documents():
 
     index_name = "labour-lens"
 
-    pc_index = pc.Index(index_name)
+    pc_index = pc.Index(index_name)  # selecting existing pinecone index
 
     # --------------------------------------------------
     # 3. Create embeddings model
@@ -50,6 +50,7 @@ def process_documents():
     # 5. Find all PDF files in data folder
     # --------------------------------------------------
 
+    # works backwards from the location of doc_processor.py to find the project root.
     project_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..")
     )
@@ -59,6 +60,7 @@ def process_documents():
         "data"
     )
 
+    # Looks through the data folder and gives me every PDF.
     pdf_files = [
         file for file in os.listdir(data_folder)
         if file.lower().endswith(".pdf")
@@ -70,6 +72,7 @@ def process_documents():
     # --------------------------------------------------
 
     for pdf_file in pdf_files:
+        # creates the full path to the file
         pdf_path = os.path.join(
             data_folder,
             pdf_file
@@ -89,10 +92,12 @@ def process_documents():
         # 8. Check whether document already exists
         # --------------------------------------------------
         first_chunk_id = f"{document_id}_chunk_0"
+        # ask pinecone 'does a vector with this ID already exist?'
         existing_vectors = pc_index.fetch(
             ids=[first_chunk_id]
         )
 
+        # if pinecone return that vector, skip the ingestion.
         if existing_vectors.vectors:
             print("Document already exists in Pinecone.")
             print("Skipping ingestion.")
@@ -128,6 +133,8 @@ def process_documents():
         # 12. Create deterministic chunk IDs
         # --------------------------------------------------
 
+        # These are called deterministic IDs because you can
+        # reproduce them from the same document and chunk position.
         chunk_ids = [
             f"{document_id}_chunk_{i}"
             for i in range(len(chunks))
