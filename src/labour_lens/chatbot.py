@@ -58,15 +58,10 @@ vector_store = PineconeVectorStore(
 # =========== turn vector store into retriever ==========
 
 retriever = vector_store.as_retriever(
-    # k=5 means for every question, the retriever will return top 5 chunks. can play around with this later.
+    # k:5 means for every question, the retriever will return top 5 chunks. can play around with this later.
     search_kwargs={"k": 5}
 )
-# test_docs = retriever.invoke("how many hours overtime am i allowed to work?")
 
-# for doc in test_docs:
-#     print("\n--- RETRIEVED DOCUMENT ---")
-#     print("Content:", doc.page_content)
-#     print("Metadata:", doc.metadata)
 # =========== RAG chain ==========
 
 rag_chain = create_retrieval_chain(
@@ -93,13 +88,5 @@ while True:
             print(f"Source {source_count}")
             print(f"File name: {doc.metadata["source"]}")
             print(f"Page: {doc.metadata["page_label"]}")
+            # maybe refference the section?
             source_count += 1
-
-# # question = "How many hours may an employee work per week?"
-
-# # documents = retriever.invoke(question)
-
-# # for document in documents:
-# #     print("\n------------------------------")
-# #     print(document.page_content[:500])
-#     print(document.metadata)
