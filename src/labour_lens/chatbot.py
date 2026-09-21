@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_ollama import ChatOllama
+
 import os
 
 load_dotenv()
@@ -24,18 +24,11 @@ embeddings_model = OpenAIEmbeddings(
 
 # =========== LLM ==========
 
-# ---------------local------------
-llm = ChatOllama(
-    model="gemma3:1b",
-    temperature=0,
-    num_ctx=8192
-)
-
 # ---------------openai------------
-# llm = ChatOpenAI(
-#     model="gpt-4o-mini",
-#     temperature=0
-# )
+llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0
+)
 
 # =========== Prompt template ==========
 prompt = ChatPromptTemplate.from_template("""
