@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from .chatbot import ask_labourlens
 
 
 app = FastAPI(title="LAbourLens API")
@@ -16,4 +17,4 @@ class QuestionRequest(BaseModel):
 
 @app.post("/ask")
 def ask_question(request: QuestionRequest):
-    return request.question
+    return ask_labourlens(question=request.question)

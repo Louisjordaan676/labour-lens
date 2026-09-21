@@ -71,24 +71,37 @@ rag_chain = create_retrieval_chain(
     document_chain
 )
 
-# =========== Response ==========
 
-while True:
-    user_input = input("You: ")
+# =========== ask labour lens ==========
 
-    if user_input == "exit":
-        break
-    else:
-        response = rag_chain.invoke({
-            "input": user_input
-        })
-        print(f"AI: {response["answer"]}")
-        print("\nRetrieved sources:")
-        source_count = 1
-        for doc in response["context"]:
+def ask_labourlens(question):
+    response = rag_chain.invoke({
+        "input": question
+    })
+    return response
 
-            print(f"Source {source_count}")
-            print(f"File name: {doc.metadata["source"]}")
-            print(f"Page: {doc.metadata["page_label"]}")
-            # maybe refference the section?
-            source_count += 1
+# =========== Terminal chatbot ===========
+
+
+if __name__ == "__main__":
+    while True:
+        user_input = input("You: ")
+
+        if user_input == "exit":
+            break
+        else:
+            response = rag_chain.invoke({
+                "input": user_input
+            })
+
+            print(f"AI: {response['answer']}")
+            print("\nRetrieved sources:")
+
+            source_count = 1
+
+            for doc in response["context"]:
+                print(f"Source {source_count}")
+                print(f"File name: {doc.metadata['source']}")
+                print(f"Page: {doc.metadata['page_label']}")
+
+                source_count += 1
