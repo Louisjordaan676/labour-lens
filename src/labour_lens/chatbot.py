@@ -78,7 +78,19 @@ def ask_labourlens(question):
     response = rag_chain.invoke({
         "input": question
     })
-    return response
+
+    sources = [
+        {
+            "file": doc.metadata["source"],
+            "page": doc.metadata["page_label"]
+        }
+        for doc in response["context"]
+    ]
+
+    return {
+        "answer": response["answer"],
+        "sources": sources
+    }
 
 # =========== Terminal chatbot ===========
 

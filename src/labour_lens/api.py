@@ -15,6 +15,16 @@ class QuestionRequest(BaseModel):
     question: str
 
 
-@app.post("/ask")
+class Source(BaseModel):
+    file: str
+    page: str
+
+
+class AnswerResponse(BaseModel):
+    answer: str
+    sources: list[Source]
+
+
+@app.post("/ask", response_model=AnswerResponse)
 def ask_question(request: QuestionRequest):
     return ask_labourlens(question=request.question)
